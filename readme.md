@@ -52,6 +52,69 @@ pip install -r requirements.txt
 python run.py
 ```
 
+## 🚀 Build thành file EXE
+
+### Cách 1: Sử dụng script tự động (khuyến nghị)
+
+**Trên Windows:**
+```bash
+# Cách thông thường
+build_exe.bat
+
+# Nếu gặp lỗi PyInstaller, dùng script fix
+build_exe_fix.bat
+```
+
+**Trên Linux/Mac:**
+```bash
+chmod +x build_exe.sh
+./build_exe.sh
+```
+
+### 🔧 Khắc phục lỗi PyInstaller
+
+**Nếu gặp lỗi `OSError` hoặc quyền truy cập:**
+
+```bash
+# Phương pháp 1: Script khắc phục mạnh
+fix_pyinstaller_permission.bat
+
+# Phương pháp 2: Giao diện GUI (dễ dùng)
+build_gui.bat
+
+# Phương pháp 3: Sử dụng Nuitka (thay thế PyInstaller)
+build_nuitka.bat
+```
+
+### Cách 2: Build thủ công
+```bash
+# Cài đặt PyInstaller
+pip install pyinstaller
+
+# Build thành file EXE
+pyinstaller --onefile --windowed --name "AutoClicker-GameBot" --add-data "image;image" run.py
+```
+
+### 📁 Kết quả sau khi build:
+- File EXE sẽ được tạo trong thư mục: `build/dist/`
+- Tên file: `AutoClicker-GameBot.exe` (Windows) hoặc `AutoClicker-GameBot` (Linux/Mac)
+- Kích thước: ~50-100MB (bao gồm Python runtime)
+
+### 📊 So sánh các phương pháp build:
+
+| Phương pháp | Ưu điểm | Nhược điểm | Kích thước |
+|-------------|---------|------------|-----------|
+| **PyInstaller** | Phổ biến, ổn định | Chậm, dung lượng lớn | ~80-120MB |
+| **Nuitka** | Nhanh, tối ưu | Cần Visual C++ | ~50-80MB |
+| **auto-py-to-exe** | GUI thân thiện | Dựa trên PyInstaller | ~80-120MB |
+| **cx_Freeze** | Đơn giản, nhẹ | Ít tính năng | ~60-100MB |
+
+### ⚠️ Lưu ý quan trọng:
+- **Thư mục image**: Khi chạy file EXE, đảm bảo thư mục `image/` ở cùng vị trí với file EXE
+- **Antivirus**: Một số phần mềm diệt virus có thể cảnh báo false positive với file EXE
+- **Performance**: File EXE có thể khởi động chậm hơn chạy trực tiếp Python
+- **Visual C++**: Nuitka cần Microsoft Visual C++ Redistributable
+
 ## Cấu trúc file
 ```
 auto-click/
@@ -61,11 +124,25 @@ auto-click/
 │   ├── Claim.png      # Nút claim phần thưởng
 │   ├── coin.png       # Hình ảnh coin
 │   ├── gem.png        # Hình ảnh gem
-│   └── gold.png       # Hình ảnh gold
+│   ├── gold.png       # Hình ảnh gold
+│   └── gold2.png      # Hình ảnh gold loại 2
+├── build/             # Thư mục build (tự động tạo)
+│   └── dist/          # Chứa file EXE sau khi build
 ├── auto_clicker.py    # File chính chứa ứng dụng
 ├── run.py            # Script khởi chạy
 ├── requirements.txt  # Danh sách thư viện cần thiết
+├── .gitignore        # File cấu hình Git ignore
+├── COMMIT_TEMPLATE.md # Template cho Git commit messages
+├── build_exe.bat     # Script build EXE cho Windows
+├── build_exe_fix.bat # Script build EXE (khắc phục lỗi)
+├── build_exe.sh      # Script build EXE cho Linux/Mac
+├── build_gui.bat     # Build với giao diện GUI (auto-py-to-exe)
+├── build_nuitka.bat  # Build với Nuitka (thay thế PyInstaller)
+├── fix_pyinstaller_permission.bat # Khắc phục lỗi quyền PyInstaller
 ├── install.bat       # Script cài đặt cho Windows
+├── install_fix.bat   # Script cài đặt fix lỗi
+├── install_conda.bat # Script cài đặt với Conda
+├── install_pyinstaller.bat # Script cài đặt PyInstaller
 └── readme.md         # File hướng dẫn này
 ```
 
@@ -99,6 +176,32 @@ auto-click/
 - Tăng thời gian pause giữa các lệnh
 - Đóng các ứng dụng không cần thiết
 
+### Lỗi build EXE
+
+**Lỗi `OSError` khi cài PyInstaller:**
+```bash
+# Chạy Command Prompt với quyền Administrator
+# Sau đó: install_pyinstaller.bat
+```
+
+**Lỗi `pyinstaller not found`:**
+```bash
+# Thử các lệnh sau:
+python -m pip install pyinstaller
+pip install --user pyinstaller
+pip install --no-cache-dir pyinstaller
+```
+
+**File EXE không chạy được:**
+- Đảm bảo thư mục `image/` ở cùng vị trí với file EXE
+- Tắt antivirus tạm thời
+- Chạy file EXE với quyền Administrator
+
+**Build thất bại:**
+- Kiểm tra Python version >= 3.7
+- Đảm bảo tất cả dependencies đã cài đặt
+- Thử build với `build_exe_fix.bat`
+
 ## Thông tin kỹ thuật
 - **Python version**: 3.7+
 - **GUI Framework**: Tkinter
@@ -106,6 +209,39 @@ auto-click/
 - **Auto-clicking**: PyAutoGUI
 - **Image Processing**: Pillow
 
+
+## 📦 Git và Version Control
+
+### 🎯 Khởi tạo Git repository:
+```bash
+git init
+git add .
+git commit -m "Initial commit: Auto Clicker v0.2"
+```
+
+### 📋 File được ignore tự động:
+- ✅ Thư mục `build/` và `dist/` (file build)
+- ✅ `__pycache__/` và `*.pyc` (Python cache)
+- ✅ `venv/` và `.venv/` (virtual environments)
+- ✅ `.vscode/` và `.idea/` (IDE settings)
+- ✅ `*.log` và `*.tmp` (file tạm thời)
+- ✅ OS files (`.DS_Store`, `Thumbs.db`)
+
+### 🔄 Clone project:
+```bash
+git clone <repository-url>
+cd auto-click
+pip install -r requirements.txt
+python run.py
+```
+
+### 📝 Commit message template:
+Project bao gồm file `COMMIT_TEMPLATE.md` với các mẫu commit message:
+- ✨ `feat:` - Tính năng mới
+- 🐛 `fix:` - Sửa lỗi  
+- 📚 `docs:` - Cập nhật tài liệu
+- 🔧 `chore:` - Bảo trì code
+- ⚡ `perf:` - Tối ưu hiệu suất
 
 ## Update v.0.2.
 - Ở step 1, bot sẽ **thu lượm tất cả** các loại vàng/coin trước khi tìm Gems.png:
