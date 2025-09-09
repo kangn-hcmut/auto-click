@@ -8,6 +8,172 @@
 2. **Step 2**: Đợi popup hiện lên và tìm kiếm nút `OK.png` rồi click  
 3. **Step 3**: Chờ đợi ads chạy xong, tìm nút `Claim.png` rồi click để nhận thưởng
 
+# Feature v.0.3 - Starfall Mode & Tools
+
+## Mô tả
+Chức năng này cho phép tự động xem ads để nhận starfall ticket với 2 chế độ hoạt động:
+- **Normal Mode**: Thu lượm gold/coin và gems (như v.0.2)  
+- **Starfall Mode**: Chỉ tập trung xem ads để nhận starfall ticket
+
+## 🎯 Các bước thực hiện (Starfall Mode)
+1. **Step 1**: Tìm kiếm hình ảnh `ads.png` và click vào đó
+2. **Step 2**: Chờ đợi ads chạy xong (30-60 giây)
+3. **Step 3**: Tìm nút `Claim.png` và click để nhận starfall ticket
+4. **Step 4**: Lặp lại chu trình để tích lũy starfall ticket
+
+## 🔧 Tools và Scripts mới cho v.0.3
+
+### 📁 Cấu trúc file mới
+```
+auto-click/
+├── image/
+│   ├── ads.png        # 🆕 Hình ảnh nút xem ads
+│   ├── starfall.png   # 🆕 Hình ảnh starfall ticket  
+│   └── ...existing files...
+├── scripts/           # 🆕 Thư mục scripts v.0.3
+│   ├── test_starfall.bat    # Test chế độ starfall
+│   ├── switch_mode.bat      # Chuyển đổi chế độ
+│   └── auto_setup.bat       # Cài đặt tự động v.0.3
+├── config/            # 🆕 Thư mục cấu hình
+│   ├── starfall_config.json  # Cấu hình starfall mode
+│   └── normal_config.json    # Cấu hình normal mode  
+└── ...existing files...
+```
+
+### 🚀 Scripts mới
+
+#### 1. **test_starfall.bat** - Test chế độ Starfall
+```bash
+# Test các hình ảnh starfall mode
+scripts/test_starfall.bat
+```
+
+#### 2. **switch_mode.bat** - Chuyển đổi chế độ
+```bash  
+# Chuyển giữa Normal và Starfall mode
+scripts/switch_mode.bat
+```
+
+#### 3. **auto_setup.bat** - Cài đặt v.0.3
+```bash
+# Cài đặt tự động tất cả cho v.0.3
+scripts/auto_setup.bat
+```
+
+#### 4. **build_v3.bat** - Build phiên bản v.0.3
+```bash
+# Build EXE với tính năng starfall mode
+scripts/build_v3.bat
+```
+
+### ⚙️ Files cấu hình
+
+#### **starfall_config.json**
+```json
+{
+  "mode": "starfall",
+  "ads_wait_time": 45,
+  "max_attempts": 20,
+  "confidence": 0.7,
+  "images": ["ads.png", "Claim.png", "starfall.png"],
+  "cycle_delay": 10
+}
+```
+
+#### **normal_config.json**  
+```json
+{
+  "mode": "normal", 
+  "collect_gold": true,
+  "collect_gems": true,
+  "ads_wait_time": 30,
+  "confidence": 0.8,
+  "images": ["gold2.png", "gold.png", "coin.png", "Gems.png", "OK.png", "Claim.png"]
+}
+```
+
+## 🎮 Cách sử dụng v.0.3
+
+### Phương pháp 1: Giao diện GUI (Khuyến nghị)
+1. **Chạy ứng dụng**: `python run.py`
+2. **Chọn chế độ**: 
+   - Nút **"Normal Mode"** (thu lượm + gems)
+   - Nút **"Starfall Mode"** (chỉ xem ads)
+3. **Cấu hình thời gian**: Điều chỉnh thời gian chờ ads
+4. **Bắt đầu**: Click "Start" và theo dõi log
+
+### Phương pháp 2: Scripts tự động
+```bash
+# Test trước khi chạy
+scripts/test_starfall.bat
+
+# Chạy Starfall mode
+scripts/switch_mode.bat starfall
+python run.py
+
+# Chạy Normal mode  
+scripts/switch_mode.bat normal
+python run.py
+```
+
+### Phương pháp 3: Command line
+```bash
+# Chạy với tham số chế độ
+python run.py --mode starfall
+python run.py --mode normal
+python run.py --config config/starfall_config.json
+```
+
+## 🔍 Tools kiểm tra và debug
+
+### **Debug Mode**
+```bash
+# Chạy với debug để xem chi tiết
+python run.py --debug --mode starfall
+```
+
+### **Image Recognition Test**
+```bash
+# Test nhận diện hình ảnh starfall
+python scripts/test_recognition.py --image ads.png
+python scripts/test_recognition.py --image starfall.png
+```
+
+### **Performance Monitor**
+```bash
+# Theo dõi hiệu suất
+python scripts/monitor_performance.py
+```
+
+## 📊 So sánh chế độ
+
+| Tính năng | Normal Mode | Starfall Mode |
+|-----------|-------------|---------------|
+| **Thu lượm Gold/Coin** | ✅ Có | ❌ Không |
+| **Thu lượm Gems** | ✅ Có | ❌ Không |
+| **Xem Ads** | ✅ Có | ✅ Có (chính) |
+| **Starfall Ticket** | ✅ Có | ✅ Có (tập trung) |
+| **Tốc độ** | Chậm hơn | Nhanh hơn |
+| **Hiệu quả** | Đa mục tiêu | Chuyên biệt |
+
+## 🎯 Chiến lược sử dụng
+
+### **Chiến lược 1: Cân bằng**
+- **Sáng**: Starfall Mode (tích lũy ticket)
+- **Chiều**: Normal Mode (thu lượm tổng hợp)
+
+### **Chiến lược 2: Tập trung**  
+- **Event Starfall**: Chỉ dùng Starfall Mode
+- **Ngày thường**: Chỉ dùng Normal Mode
+
+### **Chiến lược 3: Tự động**
+```bash
+# Lập lịch tự động
+scripts/schedule_auto.bat
+# 00:00-12:00: Starfall Mode  
+# 12:00-24:00: Normal Mode
+```
+
 ## Tính năng
 - ✅ Giao diện đồ họa với nút Start/Stop
 - ✅ Hiển thị số lần click và trạng thái hoạt động

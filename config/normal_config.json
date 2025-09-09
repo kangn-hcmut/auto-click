@@ -1,0 +1,13 @@
+{
+  "mode": "normal",
+  "collect_gold": true,
+  "collect_gems": true,
+  "max_attempts": 10,
+  "confidence": 0.8,
+  "images": ["gold2.png", "gold.png", "coin.png", "Gems.png", "OK.png", "Claim.png"],
+  "cycle_delay": 5,
+  "max_gold_collection": 10,
+  "step_wait_time": 2,
+  "scan_interval": 1,
+  "description": "Normal mode collects gold/coins and gems, then watches ads"
+}

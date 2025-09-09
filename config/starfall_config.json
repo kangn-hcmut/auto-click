@@ -1,0 +1,11 @@
+{
+  "mode": "starfall",
+  "max_attempts": 20,
+  "confidence": 0.7,
+  "images": [
+    "ads.png",
+    "star_claim.png"
+  ],
+  "cycle_delay": 1,
+  "scan_interval": 1
+}
