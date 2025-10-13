@@ -7,5 +7,9 @@
     "star_claim.png"
   ],
   "cycle_delay": 1,
-  "scan_interval": 1
+  "scan_interval": 1,
+  "use_multi_scale": true,
+  "use_rotation": true,
+  "adaptive_confidence": true,
+  "description": "Starfall mode with multi-scale detection for different screen resolutions"
 }

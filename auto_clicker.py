@@ -12,7 +12,7 @@ class AutoClickerApp:
     def __init__(self, root, mode=None, config=None, debug=False):
         self.root = root
         self.root.title("Auto Clicker v.0.3 - Game Bot")
-        self.root.geometry("600x500")
+        self.root.geometry("600x800")
         self.root.resizable(False, False)
         
         # Trạng thái ứng dụng
@@ -40,6 +40,58 @@ class AutoClickerApp:
         self.log_message(f"Chế độ hiện tại: {self.current_mode.title()} Mode")
         if self.debug_mode:
             self.log_message("Chế độ debug: BẬT")
+        
+        # Detect screen info
+        self.detect_screen_info()
+    
+    def detect_screen_info(self):
+        """Phát hiện thông tin màn hình và điều chỉnh cấu hình"""
+        try:
+            import tkinter as tk
+            root = tk.Tk()
+            screen_width = root.winfo_screenwidth()
+            screen_height = root.winfo_screenheight()
+            root.destroy()
+            
+            # Tính tỷ lệ màn hình
+            aspect_ratio = screen_width / screen_height
+            screen_diagonal = (screen_width**2 + screen_height**2)**0.5
+            
+            # Classify screen type
+            if abs(aspect_ratio - 16/9) < 0.1:
+                aspect_type = "16:9"
+            elif abs(aspect_ratio - 16/10) < 0.1:
+                aspect_type = "16:10"
+            elif abs(aspect_ratio - 4/3) < 0.1:
+                aspect_type = "4:3"
+            else:
+                aspect_type = f"{aspect_ratio:.2f}:1"
+            
+            # Estimate screen size (rough)
+            if screen_width <= 1366:
+                size_category = "Small (≤13.3\")"
+                confidence_adjust = 0.1  # Lower confidence for small screens
+            elif screen_width <= 1920:
+                size_category = "Medium (14-15.6\")"
+                confidence_adjust = 0.0  # Standard confidence
+            else:
+                size_category = "Large (≥17\")"
+                confidence_adjust = -0.05  # Slightly higher confidence for large screens
+            
+            # Adjust confidence based on screen
+            adjusted_confidence = float(self.confidence_var.get()) + confidence_adjust
+            adjusted_confidence = max(0.5, min(0.95, adjusted_confidence))  # Clamp between 0.5-0.95
+            
+            self.log_message(f"📺 Màn hình: {screen_width}x{screen_height} ({aspect_type}) - {size_category}")
+            self.log_message(f"🎯 Confidence điều chỉnh: {float(self.confidence_var.get()):.2f} → {adjusted_confidence:.2f}")
+            
+            # Update confidence if significant change
+            if abs(adjusted_confidence - float(self.confidence_var.get())) > 0.05:
+                self.confidence_var.set(f"{adjusted_confidence:.2f}")
+                self.log_message(f"✅ Đã tự động điều chỉnh confidence cho màn hình này")
+            
+        except Exception as e:
+            self.log_message(f"⚠️ Không thể detect screen info: {e}")
     
     def load_default_config(self):
         """Tải cấu hình mặc định"""
@@ -219,7 +271,7 @@ class AutoClickerApp:
         self.root.update_idletasks()
         
     def find_image_on_screen(self, image_name, confidence=0.8):
-        """Tìm kiếm hình ảnh trên màn hình"""
+        """Tìm kiếm hình ảnh trên màn hình với multi-scale detection"""
         try:
             image_path = os.path.join(self.image_dir, image_name)
             if not os.path.exists(image_path):
@@ -236,25 +288,160 @@ class AutoClickerApp:
                 self.log_message(f"Không thể đọc file hình ảnh: {image_name}")
                 return None
                 
-            # Tìm kiếm hình ảnh
-            result = cv2.matchTemplate(screenshot_cv, template, cv2.TM_CCOEFF_NORMED)
-            locations = np.where(result >= confidence)
+            # Multi-scale template matching cho các độ phân giải khác nhau
+            # Scales để test: 0.5x, 0.75x, 1.0x, 1.25x, 1.5x, 2.0x
+            scales = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
+            best_match = None
+            best_confidence = 0
+            best_location = None
+            best_scale = 1.0
             
-            if len(locations[0]) > 0:
-                # Lấy vị trí đầu tiên tìm thấy
-                y, x = locations[0][0], locations[1][0]
-                h, w = template.shape[:2]
+            for scale in scales:
+                # Resize template theo scale
+                if scale != 1.0:
+                    new_width = int(template.shape[1] * scale)
+                    new_height = int(template.shape[0] * scale)
+                    
+                    # Bỏ qua nếu template quá lớn hoặc quá nhỏ
+                    if new_width < 10 or new_height < 10:
+                        continue
+                    if new_width > screenshot_cv.shape[1] or new_height > screenshot_cv.shape[0]:
+                        continue
+                        
+                    scaled_template = cv2.resize(template, (new_width, new_height))
+                else:
+                    scaled_template = template
+                
+                # Template matching
+                result = cv2.matchTemplate(screenshot_cv, scaled_template, cv2.TM_CCOEFF_NORMED)
+                min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+                
+                # Lưu kết quả tốt nhất
+                if max_val > best_confidence and max_val >= confidence:
+                    best_confidence = max_val
+                    best_location = max_loc
+                    best_scale = scale
+                    h, w = scaled_template.shape[:2]
+                    best_match = (w, h)
+                    
+                if self.debug_mode:
+                    self.log_message(f"Scale {scale:.2f}: confidence={max_val:.3f} at {max_loc}")
+            
+            if best_location is not None:
+                x, y = best_location
+                w, h = best_match
                 center_x = x + w // 2
                 center_y = y + h // 2
-                self.log_message(f"Tìm thấy {image_name} tại ({center_x}, {center_y})")
+                
+                scale_info = f" (scale={best_scale:.2f})" if best_scale != 1.0 else ""
+                self.log_message(f"Tìm thấy {image_name} tại ({center_x}, {center_y}) với confidence={best_confidence:.3f}{scale_info}")
                 return (center_x, center_y)
             else:
-                self.log_message(f"Không tìm thấy {image_name} trên màn hình")
+                self.log_message(f"Không tìm thấy {image_name} trên màn hình (đã thử {len(scales)} scales)")
                 return None
                 
         except Exception as e:
             self.log_message(f"Lỗi khi tìm kiếm {image_name}: {str(e)}")
             return None
+    
+    def find_image_with_rotation(self, image_name, confidence=0.8):
+        """Tìm kiếm hình ảnh với khả năng xoay nhẹ (cho trường hợp màn hình bị nghiêng)"""
+        try:
+            image_path = os.path.join(self.image_dir, image_name)
+            if not os.path.exists(image_path):
+                return None
+                
+            screenshot = pyautogui.screenshot()
+            screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+            template = cv2.imread(image_path)
+            
+            if template is None:
+                return None
+            
+            best_match = None
+            best_confidence = 0
+            
+            # Test với các góc xoay nhẹ: -5°, 0°, +5°
+            rotation_angles = [-5, 0, 5]
+            scales = [0.8, 0.9, 1.0, 1.1, 1.2]
+            
+            for angle in rotation_angles:
+                for scale in scales:
+                    if not self.is_running:
+                        break
+                        
+                    # Xoay và scale template
+                    center = (template.shape[1]//2, template.shape[0]//2)
+                    
+                    # Scale first
+                    if scale != 1.0:
+                        new_w = int(template.shape[1] * scale)
+                        new_h = int(template.shape[0] * scale)
+                        if new_w < 10 or new_h < 10 or new_w > screenshot_cv.shape[1] or new_h > screenshot_cv.shape[0]:
+                            continue
+                        scaled_template = cv2.resize(template, (new_w, new_h))
+                    else:
+                        scaled_template = template
+                    
+                    # Rotate if needed
+                    if angle != 0:
+                        center = (scaled_template.shape[1]//2, scaled_template.shape[0]//2)
+                        rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+                        rotated_template = cv2.warpAffine(scaled_template, rotation_matrix, 
+                                                        (scaled_template.shape[1], scaled_template.shape[0]))
+                    else:
+                        rotated_template = scaled_template
+                    
+                    # Template matching
+                    result = cv2.matchTemplate(screenshot_cv, rotated_template, cv2.TM_CCOEFF_NORMED)
+                    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+                    
+                    if max_val > best_confidence and max_val >= confidence:
+                        best_confidence = max_val
+                        h, w = rotated_template.shape[:2]
+                        center_x = max_loc[0] + w // 2
+                        center_y = max_loc[1] + h // 2
+                        best_match = (center_x, center_y, scale, angle)
+                        
+                        if self.debug_mode:
+                            self.log_message(f"Better match: scale={scale:.2f}, angle={angle}°, conf={max_val:.3f}")
+            
+            if best_match:
+                x, y, scale, angle = best_match
+                transform_info = ""
+                if scale != 1.0:
+                    transform_info += f" scale={scale:.2f}"
+                if angle != 0:
+                    transform_info += f" angle={angle}°"
+                    
+                self.log_message(f"Tìm thấy {image_name} tại ({x}, {y}) với confidence={best_confidence:.3f}{transform_info}")
+                return (x, y)
+            else:
+                self.log_message(f"Không tìm thấy {image_name} (đã thử multi-scale + rotation)")
+                return None
+                
+        except Exception as e:
+            self.log_message(f"Lỗi multi-scale detection {image_name}: {str(e)}")
+            return None
+    
+    def adaptive_find_image(self, image_name, confidence=0.8, use_rotation=False):
+        """Tìm kiếm thích ứng: thử standard trước, sau đó multi-scale nếu cần"""
+        # Thử standard detection trước (nhanh hơn)
+        result = self.find_image_on_screen(image_name, confidence)
+        
+        # Nếu không tìm thấy và confidence cao, thử giảm confidence
+        if result is None and confidence > 0.6:
+            lower_confidence = confidence - 0.1
+            result = self.find_image_on_screen(image_name, lower_confidence)
+            if result:
+                self.log_message(f"📉 Tìm thấy với confidence thấp hơn: {lower_confidence:.2f}")
+        
+        # Nếu vẫn không tìm thấy và yêu cầu rotation, thử multi-scale + rotation
+        if result is None and use_rotation:
+            self.log_message(f"🔄 Thử multi-scale + rotation cho {image_name}...")
+            result = self.find_image_with_rotation(image_name, confidence)
+        
+        return result
     
     def click_at_position(self, position):
         """Click tại vị trí được chỉ định"""
@@ -281,7 +468,7 @@ class AutoClickerApp:
             found_something = False
             
             # Tìm kiếm các loại gold/coin theo thứ tự ưu tiên
-            gold2_pos = self.find_image_on_screen("gold2.png", confidence)
+            gold2_pos = self.adaptive_find_image("gold2.png", confidence)
             if gold2_pos and self.is_running:
                 self.log_message(f"Phát hiện gold2.png lần {collected_count + 1}")
                 self.click_at_position(gold2_pos)
@@ -290,7 +477,7 @@ class AutoClickerApp:
                 time.sleep(wait_time)
                 continue
             
-            gold_pos = self.find_image_on_screen("gold.png", confidence)
+            gold_pos = self.adaptive_find_image("gold.png", confidence)
             if gold_pos and self.is_running:
                 self.log_message(f"Phát hiện gold.png lần {collected_count + 1}")
                 self.click_at_position(gold_pos)
@@ -299,7 +486,7 @@ class AutoClickerApp:
                 time.sleep(wait_time)
                 continue
                 
-            coin_pos = self.find_image_on_screen("coin.png", confidence)
+            coin_pos = self.adaptive_find_image("coin.png", confidence)
             if coin_pos and self.is_running:
                 self.log_message(f"Phát hiện coin.png lần {collected_count + 1}")
                 self.click_at_position(coin_pos)
@@ -325,7 +512,7 @@ class AutoClickerApp:
         
         # Step 1: Tìm và click vào nút ads
         self.log_message("Bước 1: Tìm kiếm nút xem ads...")
-        ads_pos = self.find_image_on_screen("ads.png", confidence)
+        ads_pos = self.adaptive_find_image("ads.png", confidence, use_rotation=True)
         
         if not ads_pos:
             self.log_message("Không tìm thấy nút ads.png, thử lại sau...")
@@ -346,7 +533,7 @@ class AutoClickerApp:
                 return False
             
             # Scan for star_claim button every second
-            claim_pos = self.find_image_on_screen("star_claim.png", confidence)
+            claim_pos = self.adaptive_find_image("star_claim.png", confidence, use_rotation=True)
             if claim_pos:
                 self.log_message(f"🎯 Tìm thấy nút star_claim sau {scan_count}s!")
                 self.click_at_position(claim_pos)
@@ -354,7 +541,7 @@ class AutoClickerApp:
                 return True
             
             # Also check if ads button appears again (in case previous ads failed)
-            ads_pos = self.find_image_on_screen("ads.png", confidence)
+            ads_pos = self.adaptive_find_image("ads.png", confidence)
             if ads_pos and scan_count > 10:  # Only check after 10s to avoid immediate re-click
                 self.log_message("🔄 Phát hiện ads.png lại, có thể ads trước đó thất bại")
                 self.click_at_position(ads_pos)
@@ -422,7 +609,7 @@ class AutoClickerApp:
         collected = self.collect_all_gold_coins(confidence, wait_time)
         
         # Sau khi thu lượm xong, tìm kiếm Gems.png
-        gems_pos = self.find_image_on_screen("Gems.png", confidence)
+        gems_pos = self.adaptive_find_image("Gems.png", confidence, use_rotation=True)
         
         # Nếu tìm thấy Gems.png thì click và tiếp tục step 2
         if gems_pos and self.is_running:
@@ -439,7 +626,7 @@ class AutoClickerApp:
         for attempt in range(5):  # Thử 5 lần trong 10 giây
             if not self.is_running:
                 break
-            ok_pos = self.find_image_on_screen("OK.png", confidence)
+            ok_pos = self.adaptive_find_image("OK.png", confidence)
             if ok_pos:
                 self.click_at_position(ok_pos)
                 time.sleep(wait_time)
@@ -459,7 +646,7 @@ class AutoClickerApp:
                 break
             
             # Scan for Claim button every second
-            claim_pos = self.find_image_on_screen("Claim.png", confidence)
+            claim_pos = self.adaptive_find_image("Claim.png", confidence, use_rotation=True)
             if claim_pos:
                 self.log_message(f"🎯 Tìm thấy nút Claim sau {scan_count}s!")
                 self.click_at_position(claim_pos)
