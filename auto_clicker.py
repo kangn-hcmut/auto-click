@@ -12,7 +12,7 @@ class AutoClickerApp:
     def __init__(self, root, mode=None, config=None, debug=False):
         self.root = root
         self.root.title("Auto Clicker v.0.3 - Game Bot")
-        self.root.geometry("600x500")
+        self.root.geometry("600x800")
         self.root.resizable(False, False)
         
         # Trạng thái ứng dụng
@@ -48,7 +48,7 @@ class AutoClickerApp:
                 "mode": "starfall",
                 "max_attempts": 20,
                 "confidence": 0.7,
-                "images": ["ads.png", "star_claim.png"],
+                "images": ["ads.png", "ads_close.png", "ads_close2.png", "ads_close3.png", "star_claim.png"],
                 "cycle_delay": 10,
                 "scan_interval": 1
             }
@@ -58,7 +58,7 @@ class AutoClickerApp:
                 "collect_gold": True,
                 "collect_gems": True,
                 "confidence": 0.8,
-                "images": ["gold2.png", "gold.png", "coin.png", "Gems.png", "OK.png", "Claim.png"],
+                "images": ["gold2.png", "gold.png", "coin.png", "Gems.png", "OK.png", "ads_close.png", "ads_close2.png", "ads_close3.png", "Claim.png"],
                 "cycle_delay": 5,
                 "scan_interval": 1
             }
@@ -318,58 +318,99 @@ class AutoClickerApp:
             self.log_message("Không tìm thấy gold/coin nào để thu lượm")
         
         return collected_count
-    
+
+    def close_popup_if_exists(self, confidence, wait_time):
+        """Đóng popup nếu tìm thấy nút close_pop_up"""
+        close_pop_up_pos = self.find_image_on_screen("close_pop_up.png", confidence)
+        if close_pop_up_pos and self.is_running:
+            self.log_message("Phát hiện popup close_pop_up.png, đang đóng...")
+            self.click_at_position(close_pop_up_pos)
+            time.sleep(wait_time)
+            return True
+        return False
+
     def starfall_workflow(self, confidence):
-        """Workflow cho Starfall Mode - continuously scan for ads.png and Claim.png"""
-        self.log_message("Bắt đầu Starfall Mode workflow...")
+        """Workflow cho Starfall Mode - vòng lặp duy nhất quét tất cả trạng thái liên tục"""
+        self.log_message("🔄 Bắt đầu Starfall Mode workflow - quét liên tục...")
         
-        # Step 1: Tìm và click vào nút ads
-        self.log_message("Bước 1: Tìm kiếm nút xem ads...")
-        ads_pos = self.find_image_on_screen("ads.png", confidence)
-        
-        if not ads_pos:
-            self.log_message("Không tìm thấy nút ads.png, thử lại sau...")
-            return False
-        
-        # Click vào nút ads
-        self.click_at_position(ads_pos)
-        self.click_count += 1
-        self.click_count_var.set(str(self.click_count))
-        
-        # Step 2: Continuously scan for star_claim button (ads duration varies: 5s, 15s, 30s, 40s, 45s, etc.)
-        self.log_message("Bước 2: Quét màn hình liên tục để tìm nút star_claim...")
         scan_count = 0
-        max_scan_time = 120  # Maximum 2 minutes scanning
+        max_scan_time = 180  # Maximum 3 minutes for full cycle
+        workflow_complete = False
         
-        for scan_count in range(max_scan_time):
-            if not self.is_running:
-                return False
-            
-            # Scan for star_claim button every second
-            claim_pos = self.find_image_on_screen("star_claim.png", confidence)
-            if claim_pos:
+        # Đầu tiên check popup nếu có
+        self.close_popup_if_exists(confidence, 1)
+        
+        while scan_count < max_scan_time and self.is_running:
+            # Priority 1: Check for star_claim button (final step)
+            star_claim_pos = self.find_image_on_screen("star_claim.png", confidence)
+            if star_claim_pos:
                 self.log_message(f"🎯 Tìm thấy nút star_claim sau {scan_count}s!")
-                self.click_at_position(claim_pos)
+                self.click_at_position(star_claim_pos)
+                self.click_count += 1
+                self.click_count_var.set(str(self.click_count))
                 self.log_message("✅ Hoàn thành 1 chu kì Starfall!")
-                return True
+                workflow_complete = True
+                break
             
-            # Also check if ads button appears again (in case previous ads failed)
+            # Priority 2: Check for ads_close buttons (may appear before star_claim)
+            ads_close_pos = self.find_image_on_screen("ads_close.png", confidence)
+            if ads_close_pos:
+                self.log_message(f"🎯 Tìm thấy nút ads_close sau {scan_count}s!")
+                self.click_at_position(ads_close_pos)
+                self.click_count += 1
+                self.click_count_var.set(str(self.click_count))
+                time.sleep(1)
+                scan_count += 1
+                continue
+            
+            ads_close2_pos = self.find_image_on_screen("ads_close2.png", confidence)
+            if ads_close2_pos:
+                self.log_message(f"🎯 Tìm thấy nút ads_close2 sau {scan_count}s!")
+                self.click_at_position(ads_close2_pos)
+                self.click_count += 1
+                self.click_count_var.set(str(self.click_count))
+                time.sleep(1)
+                scan_count += 1
+                continue
+            
+            ads_close3_pos = self.find_image_on_screen("ads_close3.png", confidence)
+            if ads_close3_pos:
+                self.log_message(f"🎯 Tìm thấy nút ads_close3 sau {scan_count}s!")
+                self.click_at_position(ads_close3_pos)
+                self.click_count += 1
+                self.click_count_var.set(str(self.click_count))
+                time.sleep(1)
+                scan_count += 1
+                continue
+            
+            # Priority 3: Check for ads button
             ads_pos = self.find_image_on_screen("ads.png", confidence)
-            if ads_pos and scan_count > 10:  # Only check after 10s to avoid immediate re-click
-                self.log_message("🔄 Phát hiện ads.png lại, có thể ads trước đó thất bại")
+            if ads_pos:
+                self.log_message(f"🎯 Tìm thấy nút ads sau {scan_count}s!")
                 self.click_at_position(ads_pos)
                 self.click_count += 1
                 self.click_count_var.set(str(self.click_count))
-                scan_count = 0  # Reset scan counter
+                time.sleep(1)
+                scan_count += 1
+                continue
+            
+            # Priority 4: Check for popups to close
+            if self.close_popup_if_exists(confidence, 1):
+                scan_count += 1
+                continue
             
             # Progress logging every 10 seconds
             if scan_count > 0 and scan_count % 10 == 0:
-                self.log_message(f"⏳ Đã quét {scan_count}s, tiếp tục tìm star_claim...")
+                self.log_message(f"⏳ Đã quét {scan_count}s, tiếp tục tìm kiếm...")
             
-            time.sleep(1)  # Scan every 1 second
+            scan_count += 1
+            time.sleep(1)  # Wait 1 second before next scan
         
-        self.log_message(f"❌ Không tìm thấy nút star_claim sau {max_scan_time}s")
-        return False
+        if not workflow_complete:
+            self.log_message(f"❌ Không hoàn thành workflow sau {scan_count}s")
+            return False
+        
+        return True
     
     def auto_click_sequence(self):
         """Thực hiện chuỗi auto-click theo chế độ được chọn"""
@@ -414,66 +455,99 @@ class AutoClickerApp:
                 time.sleep(5)
     
     def normal_workflow(self, confidence, wait_time):
-        """Workflow cho Normal Mode - thu lượm + gems + ads với continuous scanning"""
-        # Step 1: Thu lượm tất cả gold/coin trước, sau đó tìm Gems.png
-        self.log_message("Bước 1: Thu lượm gold/coin và tìm kiếm Gems.png...")
+        """Workflow cho Normal Mode - vòng lặp duy nhất quét tất cả trạng thái liên tục"""
+        self.log_message("🔄 Bắt đầu Normal Mode workflow - quét liên tục...")
         
-        # Thu lượm tất cả gold/coin có thể tìm thấy
-        collected = self.collect_all_gold_coins(confidence, wait_time)
-        
-        # Sau khi thu lượm xong, tìm kiếm Gems.png
-        gems_pos = self.find_image_on_screen("Gems.png", confidence)
-        
-        # Nếu tìm thấy Gems.png thì click và tiếp tục step 2
-        if gems_pos and self.is_running:
-            self.click_at_position(gems_pos)
-            self.click_count += 1
-            self.click_count_var.set(str(self.click_count))
-            time.sleep(wait_time)
-        else:
-            self.log_message("Không tìm thấy Gems.png, bỏ qua step này...")
-            return False
-        
-        # Step 2: Đợi popup và tìm OK.png
-        self.log_message("Bước 2: Đợi popup và tìm kiếm OK.png...")
-        for attempt in range(5):  # Thử 5 lần trong 10 giây
-            if not self.is_running:
-                break
-            ok_pos = self.find_image_on_screen("OK.png", confidence)
-            if ok_pos:
-                self.click_at_position(ok_pos)
-                time.sleep(wait_time)
-                break
-            time.sleep(2)
-        else:
-            self.log_message("Không tìm thấy popup OK.png, bỏ qua...")
-            return False
-        
-        # Step 3: Continuously scan for Claim button (ads duration varies)
-        self.log_message("Bước 3: Quét màn hình liên tục để tìm nút Claim...")
         scan_count = 0
-        max_scan_time = 120  # Maximum 2 minutes scanning
+        max_scan_time = 60  # Maximum 1 minute for full cycle
+        workflow_complete = False
         
-        for scan_count in range(max_scan_time):
-            if not self.is_running:
-                break
-            
-            # Scan for Claim button every second
+        while scan_count < max_scan_time and self.is_running:
+            # Priority 1: Check for Claim button (final step)
             claim_pos = self.find_image_on_screen("Claim.png", confidence)
             if claim_pos:
                 self.log_message(f"🎯 Tìm thấy nút Claim sau {scan_count}s!")
                 self.click_at_position(claim_pos)
+                self.click_count += 1
+                self.click_count_var.set(str(self.click_count))
                 self.log_message("✅ Hoàn thành 1 chu kì Normal Mode!")
-                return True
+                workflow_complete = True
+                break
+            
+            # Priority 2: Check for ads_close buttons (may appear before Claim)
+            ads_close_pos = self.find_image_on_screen("ads_close.png", confidence)
+            if ads_close_pos:
+                self.log_message(f"🎯 Tìm thấy nút ads_close sau {scan_count}s!")
+                self.click_at_position(ads_close_pos)
+                self.click_count += 1
+                self.click_count_var.set(str(self.click_count))
+                time.sleep(wait_time)
+                scan_count += 1
+                continue
+            
+            ads_close2_pos = self.find_image_on_screen("ads_close2.png", confidence)
+            if ads_close2_pos:
+                self.log_message(f"🎯 Tìm thấy nút ads_close2 sau {scan_count}s!")
+                self.click_at_position(ads_close2_pos)
+                self.click_count += 1
+                self.click_count_var.set(str(self.click_count))
+                time.sleep(wait_time)
+                scan_count += 1
+                continue
+            
+            ads_close3_pos = self.find_image_on_screen("ads_close3.png", confidence)
+            if ads_close3_pos:
+                self.log_message(f"🎯 Tìm thấy nút ads_close3 sau {scan_count}s!")
+                self.click_at_position(ads_close3_pos)
+                self.click_count += 1
+                self.click_count_var.set(str(self.click_count))
+                time.sleep(wait_time)
+                scan_count += 1
+                continue
+            
+            # Priority 3: Check for OK popup
+            ok_pos = self.find_image_on_screen("OK.png", confidence)
+            if ok_pos:
+                self.log_message(f"🎯 Tìm thấy popup OK sau {scan_count}s!")
+                self.click_at_position(ok_pos)
+                self.click_count += 1
+                self.click_count_var.set(str(self.click_count))
+                time.sleep(wait_time)
+                scan_count += 1
+                continue
+            
+            # Priority 4: Check for Gems button
+            gems_pos = self.find_image_on_screen("Gems.png", confidence)
+            if gems_pos:
+                self.log_message(f"🎯 Tìm thấy Gems.png sau {scan_count}s!")
+                self.click_at_position(gems_pos)
+                self.click_count += 1
+                self.click_count_var.set(str(self.click_count))
+                time.sleep(wait_time)
+                scan_count += 1
+                continue
+            
+            # Priority 5: Check for popups to close
+            if self.close_popup_if_exists(confidence, wait_time):
+                scan_count += 1
+                continue
+
+            
             
             # Progress logging every 10 seconds
             if scan_count > 0 and scan_count % 10 == 0:
-                self.log_message(f"⏳ Đã quét {scan_count}s, tiếp tục tìm Claim...")
+                self.log_message(f"⏳ Đã quét {scan_count}s, tiếp tục tìm kiếm...")
             
-            time.sleep(1)  # Scan every 1 second
+            scan_count += 1
+            time.sleep(1)  # Wait 1 second before next scan
+            self.close_popup_if_exists(confidence, wait_time)
+
         
-        self.log_message(f"❌ Không tìm thấy nút Claim sau {max_scan_time}s")
-        return False
+        if not workflow_complete:
+            self.log_message(f"❌ Không hoàn thành workflow sau {scan_count}s")
+            return False
+        
+        return True
     
     def start_clicking(self):
         """Bắt đầu auto-click"""

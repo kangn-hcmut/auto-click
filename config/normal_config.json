@@ -2,7 +2,7 @@
   "mode": "normal",
   "collect_gold": true,
   "collect_gems": true,
-  "confidence": 0.7,
+  "confidence": 0.8,
   "images": [
     "gold2.png",
     "gold.png",
@@ -11,6 +11,6 @@
     "OK.png",
     "Claim.png"
   ],
-  "cycle_delay": 1,
+  "cycle_delay": 0,
   "scan_interval": 1
 }

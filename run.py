@@ -55,8 +55,8 @@ def main():
     
     if config:
         print(f"Cấu hình: {config.get('mode', 'unknown').title()} Mode")
-        print(f"Độ chính xác: {config.get('confidence', 0.8)}")
-        print(f"Chu kì delay: {config.get('cycle_delay', 5)} giây")
+        print(f"Độ chính xác: {config.get('confidence', 0.7)}")
+        print(f"Chu kì delay: {config.get('cycle_delay', 1)} giây")
         print("Logic: Quét liên tục cho Claim.png (không cố định thời gian ads)")
     
     if args.debug:
